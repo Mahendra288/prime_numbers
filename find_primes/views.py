@@ -6,7 +6,6 @@ from django.http import HttpResponse
 from find_primes.models import PrimeNumberRequests, PrimeNumberRequestStatus
 
 
-
 def find_primes(request):
     from find_primes.tasks import find_n_primes
 
@@ -17,6 +16,7 @@ def find_primes(request):
         no_of_primes=no_of_primes,
         status=PrimeNumberRequestStatus.QUEUED.value
     )
+
     async_request = find_n_primes.delay(
         no_of_primes=no_of_primes,
         request_id=prime_number_request.pk

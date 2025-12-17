@@ -2,3 +2,7 @@ celery==5.6.0
 redis==7.1.0
 django-celery-beat
 django-celery-results
+opentelemetry-distro
+opentelemetry-instrumentation-django
+opentelemetry-exporter-otlp
+opentelemetry-instrumentation-celery
