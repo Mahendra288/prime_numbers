@@ -33,10 +33,11 @@ def find_n_primes(no_of_primes, request_id):
             break
         number += 1
 
+    result = {"primes": primes}
     with transaction.atomic():
         request_obj = PrimeNumberRequests.objects.select_for_update().get(pk=request_id)
         request_obj.status = PrimeNumberRequestStatus.FINISHED.value
         request_obj.completed_at = timezone.now()
         request_obj.result = json.dumps({"primes": primes})
         request_obj.save()
-    return primes
+    return result
