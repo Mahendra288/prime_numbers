@@ -20,5 +20,6 @@ from find_primes import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('find_primes/', views.find_primes)
+    path('find_primes/', views.find_primes),
+    path('get_primes_req_status/', views.get_primes_req_status),
 ]

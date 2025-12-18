@@ -2,7 +2,7 @@ API: find_primes - input: 4 - returns request id - in async job
 API: gives request id and status
 
 async: celery
-monitoring: otel (open telemetrics), graphana, victoriametrics
+monitoring: otel (open telemetry), grafana, victoriametrics
 setup: docker
 
 logs should be visible in graphana, otel, victoriametrics
