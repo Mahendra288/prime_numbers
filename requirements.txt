@@ -6,3 +6,5 @@ opentelemetry-distro
 opentelemetry-instrumentation-django
 opentelemetry-exporter-otlp
 opentelemetry-instrumentation-celery
+gunicorn
+whitenoise

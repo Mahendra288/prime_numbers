@@ -1,0 +1,24 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  otlphttp/victoriametrics:
+    # Notice we point to the container name 'victoriametrics'
+    metrics_endpoint: "http://victoriametrics:8428/opentelemetry/v1/metrics"
+
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      exporters: [otlphttp/victoriametrics, debug]
+    logs:
+      receivers: [otlp]
+      exporters: [debug] # Temporary: shows logs in docker console

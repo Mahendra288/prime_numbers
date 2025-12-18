@@ -15,7 +15,7 @@ def is_prime_number(number):
             break
     return False if has_other_factor else True
 
-@shared_task(ignore_result=False)
+@shared_task(name="find_primes.tasks.is_prime_number")
 def find_n_primes(no_of_primes, request_id):
 
     with transaction.atomic():
