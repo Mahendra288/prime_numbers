@@ -69,6 +69,18 @@ services:
       - otel-collector
     restart: always
 
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_INSTALL_PLUGINS=victoriametrics-metrics-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: always
+
 # ADD THIS SECTION AT THE VERY BOTTOM:
 volumes:
   static_volume:
+  grafana_data:
