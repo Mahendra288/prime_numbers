@@ -8,8 +8,15 @@ receivers:
 
 exporters:
   otlphttp/victoriametrics:
-    # Notice we point to the container name 'victoriametrics'
     metrics_endpoint: "http://victoriametrics:8428/opentelemetry/v1/metrics"
+
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  otlphttp/loki:
+    endpoint: "http://loki:3100/otlp"
 
   debug:
     verbosity: detailed
@@ -18,10 +25,10 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [debug]
+      exporters: [otlp/tempo, debug]
     metrics:
       receivers: [otlp]
       exporters: [otlphttp/victoriametrics, debug]
     logs:
       receivers: [otlp]
-      exporters: [debug] # Temporary: shows logs in docker console
+      exporters: [otlphttp/loki, debug]

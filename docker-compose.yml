@@ -69,6 +69,28 @@ services:
       - otel-collector
     restart: always
 
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./tempo-config.yaml:/etc/tempo.yaml
+      - tempo_data:/tmp/tempo
+    ports:
+      - "3200:3200"   # tempo
+      - "4317"        # otlp grpc
+    restart: always
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    command: [ "-config.file=/etc/loki/local-config.yaml" ]
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+    restart: always
+
   grafana:
     image: grafana/grafana:11.0.0
     container_name: grafana
@@ -78,9 +100,16 @@ services:
       - GF_INSTALL_PLUGINS=victoriametrics-metrics-datasource
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+    depends_on:
+      - tempo
+      - loki
+      - victoriametrics
     restart: always
 
 # ADD THIS SECTION AT THE VERY BOTTOM:
 volumes:
   static_volume:
   grafana_data:
+  tempo_data:
+  loki_data:

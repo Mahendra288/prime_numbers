@@ -9,6 +9,7 @@ from find_primes.models import PrimeNumberRequests
 @admin.register(PrimeNumberRequests)
 class PrimeNumberRequestAdmin(admin.ModelAdmin):
     list_display = ("request_id", "no_of_primes", "status", "result", "completed_at")
+    list_editable = ("result",)
     formfield_overrides = {
         models.TextField: {
             "widget": forms.Textarea(attrs={

@@ -27,7 +27,7 @@ def find_primes(request):
     response = {
         "request_id": prime_number_request.pk
     }
-    logging.info(f"API Response: {response}")
+    logging.info(f"API Response: {json.dumps(response)}")
     return HttpResponse(json.dumps(response), content_type="application/json")
 
 def get_primes_req_status(request):

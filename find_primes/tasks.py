@@ -40,4 +40,4 @@ def find_n_primes(no_of_primes, request_id):
         request_obj.completed_at = timezone.now()
         request_obj.result = json.dumps(result)
         request_obj.save()
-    return result
+    return json.dumps(result)
