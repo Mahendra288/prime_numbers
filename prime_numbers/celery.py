@@ -29,6 +29,11 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 # 3. Discovery happens here - Celery handles the timing internally
 app.autodiscover_tasks()
 
+from celery.signals import task_prerun, task_postrun, task_failure
+from opentelemetry import trace
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.context import attach, detach
+
 
 @worker_process_init.connect(weak=False)
 def init_celery_otel(*args, **kwargs):
@@ -65,3 +70,102 @@ def init_celery_otel(*args, **kwargs):
 
     # Instrument Celery
     CeleryInstrumentor().instrument(tracer_provider=trace_provider)
+
+
+tracer = trace.get_tracer(__name__)
+propagator = TraceContextTextMapPropagator()
+
+
+# ============================================
+# Step 1: Inject trace context when task is called
+# ============================================
+
+class TracedTask(app.Task):
+    """Custom Task class that handles trace context propagation"""
+
+    def apply_async(self, args=None, kwargs=None, **options):
+        """Called when task.delay() or task.apply_async() is used"""
+
+        # Get current trace context
+        from opentelemetry.context import get_current
+        current_context = get_current()
+
+        # Create a carrier (dictionary) to hold trace context
+        carrier = {}
+
+        # Inject trace context into the carrier
+        propagator.inject(carrier, context=current_context)
+
+        # Add carrier to task headers (passed to worker)
+        headers = options.get('headers') or {}
+        headers['tracing'] = carrier
+        options['headers'] = headers
+
+        # Call the original apply_async
+        return super().apply_async(args, kwargs, **options)
+
+
+# ============================================
+# Step 2: Extract trace context in the worker
+# ============================================
+
+@task_prerun.connect
+def task_prerun_handler(sender=None, task_id=None, task=None, args=None,
+                        kwargs=None, **extra_kwargs):
+    """Called BEFORE task execution in worker"""
+
+    # Extract trace context from headers
+    headers = task.request.get('headers', {})
+    carrier = headers.get('tracing', {})
+
+    if carrier:
+        # Extract context from carrier
+        context = propagator.extract(carrier)
+
+        # Attach context to current execution
+        token = attach(context)
+
+        # Store token to detach later
+        task.request.otel_token = token
+
+        # Start a span for the task execution
+        span = tracer.start_span(
+            name=f"celery.task.{task.name}",
+            context=context
+        )
+        span.set_attribute("celery.task_id", task_id)
+        span.set_attribute("celery.task_name", task.name)
+
+        # Store span to end it later
+        task.request.otel_span = span
+
+
+@task_postrun.connect
+def task_postrun_handler(sender=None, task_id=None, task=None, **kwargs):
+    """Called AFTER successful task execution"""
+
+    # End the span
+    if hasattr(task.request, 'otel_span'):
+        span = task.request.otel_span
+        span.set_attribute("celery.status", "success")
+        span.end()
+
+    # Detach context
+    if hasattr(task.request, 'otel_token'):
+        detach(task.request.otel_token)
+
+
+@task_failure.connect
+def task_failure_handler(sender=None, task_id=None, exception=None,
+                         task=None, **kwargs):
+    """Called when task fails"""
+
+    if hasattr(task.request, 'otel_span'):
+        span = task.request.otel_span
+        span.set_attribute("celery.status", "failed")
+        span.record_exception(exception)
+        span.end()
+
+    if hasattr(task.request, 'otel_token'):
+        detach(task.request.otel_token)
+

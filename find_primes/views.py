@@ -5,6 +5,9 @@ from django.http import HttpResponse
 
 from find_primes.models import PrimeNumberRequests, PrimeNumberRequestStatus
 import logging
+from opentelemetry import trace
+# Get a tracer for this module
+tracer = trace.get_tracer(__name__)
 
 def find_primes(request):
     from find_primes.tasks import find_n_primes
@@ -17,12 +20,17 @@ def find_primes(request):
         status=PrimeNumberRequestStatus.QUEUED.value
     )
 
-    async_request = find_n_primes.delay(
-        no_of_primes=no_of_primes,
-        request_id=prime_number_request.pk
-    )
-    prime_number_request.celery_req_id = async_request.id
-    prime_number_request.save()
+    with tracer.start_as_current_span("django-server.find-primes-api") as span:
+        async_request = find_n_primes.delay(
+            no_of_primes=no_of_primes,
+            request_id=prime_number_request.pk
+        )
+        prime_number_request.celery_req_id = async_request.id
+        prime_number_request.save()
+
+        span.set_attribute("celery_req_id", async_request.id)
+        span.set_attribute("prime_number_request_id", prime_number_request.pk)
+        span.add_event(f"pushed-to-celery-queue with celery req id {async_request.id}")
 
     response = {
         "request_id": prime_number_request.pk
@@ -31,8 +39,6 @@ def find_primes(request):
     return HttpResponse(json.dumps(response), content_type="application/json")
 
 def get_primes_req_status(request):
-    from find_primes.tasks import find_n_primes
-
     request_id = request.GET['request_id']
 
     # find primes in background
